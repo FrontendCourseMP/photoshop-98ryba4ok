@@ -1,0 +1,38 @@
+.bar {
+  height: 22px;
+  background: #333333;
+  border-top: 1px solid #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.right {
+  flex-shrink: 0;
+}
+
+.item {
+  font-size: 11px;
+  color: #999999;
+  white-space: nowrap;
+}
+
+.sep {
+  font-size: 11px;
+  color: #444444;
+}
+
+.hint {
+  font-size: 11px;
+  color: #555555;
+}

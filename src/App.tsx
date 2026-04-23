@@ -1,122 +1,150 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useRef } from 'react';
+import type { ImageState } from './types';
+import { MenuBar } from './components/MenuBar/MenuBar';
+import { CanvasArea } from './components/CanvasArea/CanvasArea';
+import { RightPanel } from './components/RightPanel/RightPanel';
+import { StatusBar } from './components/StatusBar/StatusBar';
+import styles from './App.module.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [image, setImage] = useState<ImageState>({
+    data: null,
+    width: null,
+    height: null,
+    colorDepth: null,
+    fileName: null,
+    format: null,
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(100);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenDialog = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+    e.target.value = '';
+  };
+
+  const processFile = (file: File) => {
+    setError(null);
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    let format: ImageState['format'] = null;
+
+    if (ext === 'png') format = 'png';
+    else if (ext === 'jpg' || ext === 'jpeg') format = 'jpg';
+    else if (ext === 'gb7') format = 'gb7';
+    else {
+      setError('Неподдерживаемый формат. Используйте PNG, JPG или GB7.');
+      return;
+    }
+
+    if (format === 'gb7') {
+      setError('Декодер GB7 будет реализован на следующем этапе.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        setImage({
+          data: imageData,
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+          colorDepth: 32,
+          fileName: file.name,
+          format,
+        });
+        setZoom(100);
+        setError(null);
+      };
+      img.onerror = () => setError('Не удалось декодировать изображение.');
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => setError('Не удалось прочитать файл.');
+    reader.readAsDataURL(file);
+  };
+
+  const downloadAs = (format: 'png' | 'jpg') => {
+    if (!image.data) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = image.data.width;
+    canvas.height = image.data.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.putImageData(image.data, 0, 0);
+    const mime = format === 'png' ? 'image/png' : 'image/jpeg';
+    const quality = format === 'jpg' ? 0.95 : undefined;
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const baseName = image.fileName?.replace(/\.[^.]+$/, '') ?? 'image';
+      a.download = `${baseName}.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, mime, quality);
+  };
+
+  const handleSaveAsPNG = () => downloadAs('png');
+  const handleSaveAsJPG = () => downloadAs('jpg');
+  const handleSaveAsGB7 = () => setError('Кодировщик GB7 будет реализован на следующем этапе.');
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className={styles.app}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".png,.jpg,.jpeg,.gb7"
+        onChange={handleFileInputChange}
+        style={{ display: 'none' }}
+      />
 
-      <div className="ticks"></div>
+      <MenuBar
+        onOpen={handleOpenDialog}
+        onSaveAsPNG={handleSaveAsPNG}
+        onSaveAsJPG={handleSaveAsJPG}
+        onSaveAsGB7={handleSaveAsGB7}
+        isImageLoaded={image.data !== null}
+      />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <div className={styles.workArea}>
+        <CanvasArea
+          imageData={image.data ?? undefined}
+          zoom={zoom}
+          onZoomChange={setZoom}
+          error={error}
+          onDrop={processFile}
+          onOpenFile={handleOpenDialog}
+        />
+        <RightPanel
+          width={image.width ?? undefined}
+          height={image.height ?? undefined}
+          colorDepth={image.colorDepth ?? undefined}
+          fileName={image.fileName ?? undefined}
+          format={image.format ?? undefined}
+        />
+      </div>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <StatusBar
+        width={image.width ?? undefined}
+        height={image.height ?? undefined}
+        colorDepth={image.colorDepth ?? undefined}
+        zoom={zoom}
+        fileName={image.fileName ?? undefined}
+      />
+    </div>
+  );
 }
 
-export default App
+export default App;

@@ -1,0 +1,78 @@
+.panel {
+  width: 220px;
+  background: #252525;
+  border-left: 1px solid #1a1a1a;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.section {
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  background: #2d2d2d;
+  cursor: pointer;
+}
+
+.sectionHeader:hover {
+  background: #333333;
+}
+
+.arrow {
+  font-size: 10px;
+  color: #777777;
+  display: inline-block;
+  transition: transform 0.15s;
+  line-height: 1;
+}
+
+.arrowClosed {
+  transform: rotate(-90deg);
+}
+
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #999999;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.sectionBody {
+  padding: 8px;
+}
+
+/* Info key-value list */
+.infoList {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  list-style: none;
+}
+
+.infoList dt {
+  font-size: 11px;
+  color: #6a6a6a;
+  white-space: nowrap;
+}
+
+.infoList dd {
+  font-size: 11px;
+  color: #cccccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  font-size: 11px;
+  color: #555555;
+  font-style: italic;
+}
