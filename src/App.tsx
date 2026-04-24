@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import type { ImageState } from './types';
-import { decodeGB7 } from './codecs/gb7';
+import { decodeGB7, encodeGB7 } from './codecs/gb7';
 import { MenuBar } from './components/MenuBar/MenuBar';
 import { CanvasArea } from './components/CanvasArea/CanvasArea';
 import { RightPanel } from './components/RightPanel/RightPanel';
@@ -113,7 +113,18 @@ function App() {
 
   const handleSaveAsPNG = () => downloadAs('png');
   const handleSaveAsJPG = () => downloadAs('jpg');
-  const handleSaveAsGB7 = () => setError('Кодировщик GB7 будет реализован на следующем этапе.');
+  const handleSaveAsGB7 = () => {
+    if (!image.data) return;
+    const bytes = encodeGB7(image.data);
+    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const baseName = image.fileName?.replace(/\.[^.]+$/, '') ?? 'image';
+    a.download = `${baseName}.gb7`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className={styles.app}>

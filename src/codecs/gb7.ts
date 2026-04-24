@@ -53,3 +53,45 @@ export function decodeGB7(buffer: ArrayBuffer): ImageData {
 
   return imageData;
 }
+
+export function encodeGB7(imageData: ImageData): Uint8Array {
+  const { width, height, data } = imageData;
+
+  let hasMask = false;
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] < 255) {
+      hasMask = true;
+      break;
+    }
+  }
+
+  const buffer = new Uint8Array(HEADER_SIZE + width * height);
+
+  buffer[0] = 0x47;
+  buffer[1] = 0x42;
+  buffer[2] = 0x37;
+  buffer[3] = 0x1d;
+  buffer[4] = 0x01;
+  buffer[5] = hasMask ? 0x01 : 0x00;
+  buffer[6] = (width >> 8) & 0xff;
+  buffer[7] = width & 0xff;
+  buffer[8] = (height >> 8) & 0xff;
+  buffer[9] = height & 0xff;
+  buffer[10] = 0x00;
+  buffer[11] = 0x00;
+
+  for (let i = 0; i < width * height; i++) {
+    const r = data[i * 4];
+    const g = data[i * 4 + 1];
+    const b = data[i * 4 + 2];
+    const a = data[i * 4 + 3];
+
+    const gray8 = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+    const gray7 = Math.round((gray8 / 255) * 127);
+    const maskBit = hasMask ? (a >= 128 ? 1 : 0) : 0;
+
+    buffer[HEADER_SIZE + i] = (maskBit << 7) | (gray7 & 0x7f);
+  }
+
+  return buffer;
+}
