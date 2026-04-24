@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import type { ImageState } from './types';
+import { decodeGB7 } from './codecs/gb7';
 import { MenuBar } from './components/MenuBar/MenuBar';
 import { CanvasArea } from './components/CanvasArea/CanvasArea';
 import { RightPanel } from './components/RightPanel/RightPanel';
@@ -29,7 +30,7 @@ function App() {
     e.target.value = '';
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     setError(null);
     const ext = file.name.split('.').pop()?.toLowerCase();
     let format: ImageState['format'] = null;
@@ -43,7 +44,21 @@ function App() {
     }
 
     if (format === 'gb7') {
-      setError('Декодер GB7 будет реализован на следующем этапе.');
+      try {
+        const buffer = await file.arrayBuffer();
+        const imageData = decodeGB7(buffer);
+        setImage({
+          data: imageData,
+          width: imageData.width,
+          height: imageData.height,
+          colorDepth: 7,
+          fileName: file.name,
+          format: 'gb7',
+        });
+        setZoom(100);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Ошибка декодирования GB7');
+      }
       return;
     }
 
