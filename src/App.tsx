@@ -2,9 +2,10 @@ import { useState, useRef } from 'react';
 import type { ImageState } from './types';
 import { decodeGB7, encodeGB7 } from './codecs/gb7';
 import { MenuBar } from './components/MenuBar/MenuBar';
-import { CanvasArea } from './components/CanvasArea/CanvasArea';
+import { CanvasArea, snapZoom } from './components/CanvasArea/CanvasArea';
 import { RightPanel } from './components/RightPanel/RightPanel';
 import { StatusBar } from './components/StatusBar/StatusBar';
+import { useHotkeys } from './hooks/useHotkeys';
 import styles from './App.module.css';
 
 function App() {
@@ -46,12 +47,12 @@ function App() {
     if (format === 'gb7') {
       try {
         const buffer = await file.arrayBuffer();
-        const imageData = decodeGB7(buffer);
+        const { imageData, colorDepth } = decodeGB7(buffer);
         setImage({
           data: imageData,
           width: imageData.width,
           height: imageData.height,
-          colorDepth: 7,
+          colorDepth,
           fileName: file.name,
           format: 'gb7',
         });
@@ -113,6 +114,15 @@ function App() {
 
   const handleSaveAsPNG = () => downloadAs('png');
   const handleSaveAsJPG = () => downloadAs('jpg');
+
+  useHotkeys({
+    'o': handleOpenDialog,
+    's': () => { if (image.data) handleSaveAsPNG(); },
+    '=': () => setZoom((z) => snapZoom(z, 'in')),
+    '+': () => setZoom((z) => snapZoom(z, 'in')),
+    '-': () => setZoom((z) => snapZoom(z, 'out')),
+    '0': () => setZoom(100),
+  });
   const handleSaveAsGB7 = () => {
     if (!image.data) return;
     const bytes = encodeGB7(image.data);
@@ -154,20 +164,30 @@ function App() {
           onOpenFile={handleOpenDialog}
         />
         <RightPanel
-          width={image.width ?? undefined}
-          height={image.height ?? undefined}
-          colorDepth={image.colorDepth ?? undefined}
-          fileName={image.fileName ?? undefined}
-          format={image.format ?? undefined}
+          {...(image.data !== null
+            ? {
+                hasImage: true as const,
+                width: image.width!,
+                height: image.height!,
+                colorDepth: image.colorDepth!,
+                fileName: image.fileName!,
+                format: image.format!,
+              }
+            : { hasImage: false as const })}
         />
       </div>
 
       <StatusBar
-        width={image.width ?? undefined}
-        height={image.height ?? undefined}
-        colorDepth={image.colorDepth ?? undefined}
         zoom={zoom}
-        fileName={image.fileName ?? undefined}
+        {...(image.data !== null
+          ? {
+              hasImage: true as const,
+              width: image.width!,
+              height: image.height!,
+              colorDepth: image.colorDepth!,
+              fileName: image.fileName!,
+            }
+          : { hasImage: false as const })}
       />
     </div>
   );

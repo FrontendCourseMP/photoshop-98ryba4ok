@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import styles from './RightPanel.module.css';
 
-interface RightPanelProps {
-  width?: number;
-  height?: number;
-  colorDepth?: number;
-  fileName?: string;
-  format?: string;
-}
+type RightPanelProps =
+  | { hasImage: false }
+  | {
+      hasImage: true;
+      width: number;
+      height: number;
+      colorDepth: number;
+      fileName: string;
+      format: string;
+    };
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -23,30 +26,22 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
   );
 };
 
-export const RightPanel: React.FC<RightPanelProps> = ({
-  width,
-  height,
-  colorDepth,
-  fileName,
-  format,
-}) => {
-  const hasImage = !!(width && height);
-
+export const RightPanel: React.FC<RightPanelProps> = (props) => {
   return (
     <aside className={styles.panel}>
       <Section title="Информация">
-        {hasImage ? (
+        {props.hasImage ? (
           <dl className={styles.infoList}>
             <dt>Файл</dt>
-            <dd title={fileName}>{fileName ?? '—'}</dd>
+            <dd title={props.fileName}>{props.fileName}</dd>
             <dt>Формат</dt>
-            <dd>{format?.toUpperCase() ?? '—'}</dd>
+            <dd>{props.format.toUpperCase()}</dd>
             <dt>Ширина</dt>
-            <dd>{width} пкс</dd>
+            <dd>{props.width} пкс</dd>
             <dt>Высота</dt>
-            <dd>{height} пкс</dd>
+            <dd>{props.height} пкс</dd>
             <dt>Глубина</dt>
-            <dd>{colorDepth ?? 32} бит</dd>
+            <dd>{props.colorDepth} бит</dd>
           </dl>
         ) : (
           <p className={styles.empty}>Изображение не загружено</p>

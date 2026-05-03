@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styles from './MenuBar.module.css';
+import { modKey } from '../../utils/platform';
 
 interface MenuBarProps {
   onOpen: () => void;
@@ -52,7 +53,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({
           <div className={styles.dropdown}>
             <button className={styles.dropItem} onClick={() => act(onOpen)}>
               Открыть…
-              <span className={styles.shortcut}>Ctrl+O</span>
+              <span className={styles.shortcut}>{modKey}+O</span>
             </button>
             <div className={styles.divider} />
             <button
@@ -61,7 +62,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({
               disabled={!isImageLoaded}
             >
               Сохранить как PNG
-              <span className={styles.shortcut}>Ctrl+S</span>
+              <span className={styles.shortcut}>{modKey}+S</span>
             </button>
             <button
               className={styles.dropItem}
@@ -92,11 +93,11 @@ export const MenuBar: React.FC<MenuBarProps> = ({
           <div className={styles.dropdown}>
             <button className={styles.dropItem} disabled>
               Отменить
-              <span className={styles.shortcut}>Ctrl+Z</span>
+              <span className={styles.shortcut}>{modKey}+Z</span>
             </button>
             <button className={styles.dropItem} disabled>
               Повторить
-              <span className={styles.shortcut}>Ctrl+Y</span>
+              <span className={styles.shortcut}>{modKey}+Y</span>
             </button>
           </div>
         )}
@@ -128,15 +129,15 @@ export const MenuBar: React.FC<MenuBarProps> = ({
           <div className={styles.dropdown}>
             <button className={styles.dropItem} disabled>
               Увеличить
-              <span className={styles.shortcut}>Ctrl++</span>
+              <span className={styles.shortcut}>{modKey}++</span>
             </button>
             <button className={styles.dropItem} disabled>
               Уменьшить
-              <span className={styles.shortcut}>Ctrl+−</span>
+              <span className={styles.shortcut}>{modKey}+−</span>
             </button>
             <button className={styles.dropItem} disabled>
               По размеру экрана
-              <span className={styles.shortcut}>Ctrl+0</span>
+              <span className={styles.shortcut}>{modKey}+0</span>
             </button>
           </div>
         )}

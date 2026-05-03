@@ -1,7 +1,7 @@
 const SIGNATURE = [0x47, 0x42, 0x37, 0x1d];
 const HEADER_SIZE = 12;
 
-export function decodeGB7(buffer: ArrayBuffer): ImageData {
+export function decodeGB7(buffer: ArrayBuffer): { imageData: ImageData; colorDepth: number } {
   const bytes = new Uint8Array(buffer);
 
   if (bytes.length < HEADER_SIZE) {
@@ -51,7 +51,7 @@ export function decodeGB7(buffer: ArrayBuffer): ImageData {
     data[offset + 3] = alpha;
   }
 
-  return imageData;
+  return { imageData, colorDepth: 8 };
 }
 
 export function encodeGB7(imageData: ImageData): Uint8Array {
