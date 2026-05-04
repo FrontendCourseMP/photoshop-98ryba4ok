@@ -1,0 +1,68 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid #1e1e1e;
+  transition: background 0.1s;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowActive {
+  background: #2a2a2a;
+  color: #d0d0d0;
+}
+
+.rowInactive {
+  background: #1e1e1e;
+  color: #555555;
+}
+
+.row:hover {
+  background: #333333;
+}
+
+.eyeIcon {
+  width: 14px;
+  height: 11px;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.thumbWrap {
+  flex-shrink: 0;
+  width: 52px;
+  height: 34px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 2px;
+}
+
+.thumbnail {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  image-rendering: pixelated;
+}
+
+.label {
+  font-size: 11px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
