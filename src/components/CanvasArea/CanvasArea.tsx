@@ -1,4 +1,7 @@
 import React, { useRef, useEffect } from 'react';
+import type { ChannelId, PickedPixel, ActiveTool } from '../../types';
+import { applyChannelMask, getChannelIds } from '../../utils/colorChannels';
+import { rgbToLab } from '../../utils/colorConvert';
 import styles from './CanvasArea.module.css';
 
 interface CanvasAreaProps {
@@ -8,6 +11,10 @@ interface CanvasAreaProps {
   error: string | null;
   onDrop: (file: File) => void;
   onOpenFile: () => void;
+  activeChannels?: ReadonlySet<ChannelId>;
+  colorDepth?: number;
+  activeTool?: ActiveTool;
+  onPixelPick?: (pixel: PickedPixel) => void;
 }
 
 export const ZOOM_STEPS = [10, 25, 33, 50, 67, 100, 150, 200, 300, 400, 600, 800, 1200, 1600, 3200];
@@ -28,6 +35,10 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
   error,
   onDrop,
   onOpenFile,
+  activeChannels,
+  colorDepth,
+  activeTool = 'pointer',
+  onPixelPick,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -42,16 +53,20 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !imageData) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    if (imageData) {
-      canvas.width = imageData.width;
-      canvas.height = imageData.height;
-      ctx.putImageData(imageData, 0, 0);
+    canvas.width = imageData.width;
+    canvas.height = imageData.height;
+
+    let data: ImageData = imageData;
+    if (activeChannels && colorDepth !== undefined) {
+      const available = getChannelIds(colorDepth);
+      data = applyChannelMask(imageData, activeChannels, available) ?? imageData;
     }
-  }, [imageData]);
+    ctx.putImageData(data, 0, 0);
+  }, [imageData, activeChannels, colorDepth]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -86,8 +101,30 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
     if (file) onDrop(file);
   };
 
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (activeTool !== 'eyedropper' || !imageData || !onPixelPick) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const px = Math.min(Math.max(0, Math.floor((e.clientX - rect.left) * scaleX)), imageData.width - 1);
+    const py = Math.min(Math.max(0, Math.floor((e.clientY - rect.top) * scaleY)), imageData.height - 1);
+
+    const idx = (py * imageData.width + px) * 4;
+    const r = imageData.data[idx];
+    const g = imageData.data[idx + 1];
+    const b = imageData.data[idx + 2];
+    const a = imageData.data[idx + 3];
+
+    onPixelPick({ x: px, y: py, r, g, b, a, lab: rgbToLab(r, g, b) });
+  };
+
   const scale = zoom / 100;
   const hasImage = !!imageData;
+  const isEyedropper = activeTool === 'eyedropper';
 
   return (
     <div
@@ -114,7 +151,9 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
               style={{
                 width: imageData!.width * scale,
                 height: imageData!.height * scale,
+                cursor: isEyedropper ? 'crosshair' : 'default',
               }}
+              onClick={handleCanvasClick}
             />
           </div>
         ) : (

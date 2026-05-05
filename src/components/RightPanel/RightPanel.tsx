@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import type { ChannelId, PickedPixel } from '../../types';
+import { ChannelsPanel } from '../ChannelsPanel/ChannelsPanel';
+import { EyedropperInfo } from '../EyedropperInfo/EyedropperInfo';
 import styles from './RightPanel.module.css';
 
 type RightPanelProps =
@@ -10,9 +13,17 @@ type RightPanelProps =
       colorDepth: number;
       fileName: string;
       format: string;
+      imageData: ImageData;
+      activeChannels: ReadonlySet<ChannelId>;
+      onChannelToggle: (channelId: ChannelId) => void;
+      pickedPixel: PickedPixel | null;
     };
 
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
+const Section: React.FC<{ title: string; children: React.ReactNode; noPad?: boolean }> = ({
+  title,
+  children,
+  noPad,
+}) => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -21,7 +32,9 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
         <span className={`${styles.arrow} ${collapsed ? styles.arrowClosed : ''}`}>▾</span>
         <span className={styles.sectionTitle}>{title}</span>
       </div>
-      {!collapsed && <div className={styles.sectionBody}>{children}</div>}
+      {!collapsed && (
+        <div className={noPad ? styles.sectionBodyNoPad : styles.sectionBody}>{children}</div>
+      )}
     </div>
   );
 };
@@ -48,8 +61,25 @@ export const RightPanel: React.FC<RightPanelProps> = (props) => {
         )}
       </Section>
 
-      <Section title="История">
-        <p className={styles.empty}>История пуста</p>
+      <Section title="Каналы" noPad>
+        {props.hasImage ? (
+          <ChannelsPanel
+            imageData={props.imageData}
+            colorDepth={props.colorDepth}
+            activeChannels={props.activeChannels}
+            onToggle={props.onChannelToggle}
+          />
+        ) : (
+          <p className={styles.empty} style={{ padding: '8px' }}>Изображение не загружено</p>
+        )}
+      </Section>
+
+      <Section title="Пипетка">
+        {props.hasImage ? (
+          <EyedropperInfo pixel={props.pickedPixel} />
+        ) : (
+          <p className={styles.empty}>Изображение не загружено</p>
+        )}
       </Section>
     </aside>
   );
