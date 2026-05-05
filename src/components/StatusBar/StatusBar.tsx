@@ -9,6 +9,7 @@ type StatusBarProps = { zoom: number } & (
       height: number;
       colorDepth: number;
       fileName: string;
+      format: string;
     }
 );
 
@@ -22,7 +23,7 @@ export const StatusBar: React.FC<StatusBarProps> = (props) => {
             <span className={styles.sep}>|</span>
             <span className={styles.item}>{props.width} × {props.height} пкс</span>
             <span className={styles.sep}>|</span>
-            <span className={styles.item}>{props.colorDepth} бит</span>
+            <span className={styles.item}>{props.format === 'gb7' ? 8 : props.colorDepth} бит</span>
           </>
         ) : (
           <span className={styles.hint}>Откройте изображение для начала работы</span>

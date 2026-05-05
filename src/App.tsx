@@ -232,6 +232,7 @@ function App() {
               height: image.height!,
               colorDepth: image.colorDepth!,
               fileName: image.fileName!,
+              format: image.format!,
             }
           : { hasImage: false as const })}
       />

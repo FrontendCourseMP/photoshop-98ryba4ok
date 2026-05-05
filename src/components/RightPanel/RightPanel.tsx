@@ -54,7 +54,7 @@ export const RightPanel: React.FC<RightPanelProps> = (props) => {
             <dt>Высота</dt>
             <dd>{props.height} пкс</dd>
             <dt>Глубина</dt>
-            <dd>{props.colorDepth} бит</dd>
+            <dd>{props.format === 'gb7' ? 8 : props.colorDepth} бит</dd>
           </dl>
         ) : (
           <p className={styles.empty}>Изображение не загружено</p>

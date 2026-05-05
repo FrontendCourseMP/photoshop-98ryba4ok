@@ -51,7 +51,7 @@ export function decodeGB7(buffer: ArrayBuffer): { imageData: ImageData; colorDep
     data[offset + 3] = alpha;
   }
 
-  return { imageData, colorDepth: 8 };
+  return { imageData, colorDepth: hasMask ? 16 : 8 };
 }
 
 export function encodeGB7(imageData: ImageData): Uint8Array {
