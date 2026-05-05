@@ -1,7 +1,9 @@
-import { useState, useRef } from 'react';
-import type { ImageState } from './types';
+import { useState, useRef, useEffect } from 'react';
+import type { ImageState, ChannelId, PickedPixel, ActiveTool } from './types';
 import { decodeGB7, encodeGB7 } from './codecs/gb7';
+import { getChannelIds } from './utils/colorChannels';
 import { MenuBar } from './components/MenuBar/MenuBar';
+import { Toolbar } from './components/Toolbar/Toolbar';
 import { CanvasArea, snapZoom } from './components/CanvasArea/CanvasArea';
 import { RightPanel } from './components/RightPanel/RightPanel';
 import { StatusBar } from './components/StatusBar/StatusBar';
@@ -19,7 +21,38 @@ function App() {
   });
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
+  const [activeChannels, setActiveChannels] = useState<Set<ChannelId>>(new Set());
+  const [activeTool, setActiveTool] = useState<ActiveTool>('pointer');
+  const [pickedPixel, setPickedPixel] = useState<PickedPixel | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset channels when a new image is loaded
+  useEffect(() => {
+    if (image.colorDepth !== null) {
+      setActiveChannels(new Set(getChannelIds(image.colorDepth)));
+    }
+    setPickedPixel(null);
+  }, [image.data]);
+
+  const handleChannelToggle = (channelId: ChannelId) => {
+    if (!image.colorDepth) return;
+    const available = getChannelIds(image.colorDepth);
+
+    setActiveChannels((prev) => {
+      if (channelId === 'composite') {
+        // Composite re-enables all channels
+        return new Set(available);
+      }
+      const next = new Set(prev);
+      if (next.has(channelId)) {
+        if (next.size === 1) return prev; // keep at least one channel visible
+        next.delete(channelId);
+      } else {
+        next.add(channelId);
+      }
+      return next;
+    });
+  };
 
   const handleOpenDialog = () => {
     fileInputRef.current?.click();
@@ -115,14 +148,6 @@ function App() {
   const handleSaveAsPNG = () => downloadAs('png');
   const handleSaveAsJPG = () => downloadAs('jpg');
 
-  useHotkeys({
-    'o': handleOpenDialog,
-    's': () => { if (image.data) handleSaveAsPNG(); },
-    '=': () => setZoom((z) => snapZoom(z, 'in')),
-    '+': () => setZoom((z) => snapZoom(z, 'in')),
-    '-': () => setZoom((z) => snapZoom(z, 'out')),
-    '0': () => setZoom(100),
-  });
   const handleSaveAsGB7 = () => {
     if (!image.data) return;
     const bytes = encodeGB7(image.data);
@@ -135,6 +160,16 @@ function App() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  useHotkeys({
+    'o': handleOpenDialog,
+    's': () => { if (image.data) handleSaveAsPNG(); },
+    '=': () => setZoom((z) => snapZoom(z, 'in')),
+    '+': () => setZoom((z) => snapZoom(z, 'in')),
+    '-': () => setZoom((z) => snapZoom(z, 'out')),
+    '0': () => setZoom(100),
+    'i': () => setActiveTool((t) => t === 'eyedropper' ? 'pointer' : 'eyedropper'),
+  });
 
   return (
     <div className={styles.app}>
@@ -155,6 +190,8 @@ function App() {
       />
 
       <div className={styles.workArea}>
+        <Toolbar activeTool={activeTool} onToolChange={setActiveTool} />
+
         <CanvasArea
           imageData={image.data ?? undefined}
           zoom={zoom}
@@ -162,7 +199,12 @@ function App() {
           error={error}
           onDrop={processFile}
           onOpenFile={handleOpenDialog}
+          activeChannels={activeChannels}
+          colorDepth={image.colorDepth ?? undefined}
+          activeTool={activeTool}
+          onPixelPick={setPickedPixel}
         />
+
         <RightPanel
           {...(image.data !== null
             ? {
@@ -172,6 +214,10 @@ function App() {
                 colorDepth: image.colorDepth!,
                 fileName: image.fileName!,
                 format: image.format!,
+                imageData: image.data,
+                activeChannels,
+                onChannelToggle: handleChannelToggle,
+                pickedPixel,
               }
             : { hasImage: false as const })}
         />

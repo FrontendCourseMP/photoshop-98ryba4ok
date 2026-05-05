@@ -1,0 +1,40 @@
+.toolbar {
+  width: 42px;
+  background: #1e1e1e;
+  border-right: 1px solid #111;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: #909090;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.btn:hover {
+  background: #2e2e2e;
+  color: #d0d0d0;
+}
+
+.btnActive {
+  background: #1a3a5c;
+  border-color: #2a5a8c;
+  color: #5aafff;
+}
+
+.btnActive:hover {
+  background: #1a3a5c;
+}
