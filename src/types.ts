@@ -1,5 +1,6 @@
 export interface ImageState {
-  data: ImageData | null;
+  bitmap: ImageBitmap | null;   // primary: GPU-side, lightweight, for rendering
+  data: ImageData | null;       // decoded pixels, null until needed (lazy)
   width: number | null;
   height: number | null;
   colorDepth: number | null;
