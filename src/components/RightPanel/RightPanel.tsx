@@ -13,7 +13,7 @@ type RightPanelProps =
       colorDepth: number;
       fileName: string;
       format: string;
-      imageData: ImageData;
+      bitmap: ImageBitmap;
       activeChannels: ReadonlySet<ChannelId>;
       onChannelToggle: (channelId: ChannelId) => void;
       pickedPixel: PickedPixel | null;
@@ -64,7 +64,9 @@ export const RightPanel: React.FC<RightPanelProps> = (props) => {
       <Section title="Каналы" noPad>
         {props.hasImage ? (
           <ChannelsPanel
-            imageData={props.imageData}
+            bitmap={props.bitmap}
+            width={props.width}
+            height={props.height}
             colorDepth={props.colorDepth}
             activeChannels={props.activeChannels}
             onToggle={props.onChannelToggle}

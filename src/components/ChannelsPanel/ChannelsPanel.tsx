@@ -14,26 +14,37 @@ const CHANNEL_LABELS: Record<ChannelId, string> = {
 
 const THUMB_W = 52;
 
-function ChannelThumbnail({ imageData, channelId }: { imageData: ImageData; channelId: ChannelId }) {
+function ChannelThumbnail({ bitmap, channelId, width, height }: {
+  bitmap: ImageBitmap;
+  channelId: ChannelId;
+  width: number;
+  height: number;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const preview = extractChannelPreview(imageData, channelId);
-    const tmp = document.createElement('canvas');
-    tmp.width = imageData.width;
-    tmp.height = imageData.height;
-    tmp.getContext('2d')!.putImageData(preview, 0, 0);
+    const aspect = height / width;
+    const thumbW = THUMB_W;
+    const thumbH = Math.max(1, Math.round(thumbW * aspect));
+    canvas.width = thumbW;
+    canvas.height = thumbH;
 
-    const aspect = imageData.height / imageData.width;
-    canvas.width = THUMB_W;
-    canvas.height = Math.max(1, Math.round(THUMB_W * aspect));
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
-  }, [imageData, channelId]);
+
+    // Draw scaled-down bitmap — fast GPU operation
+    ctx.drawImage(bitmap, 0, 0, thumbW, thumbH);
+
+    if (channelId !== 'composite') {
+      // getImageData on ~2000 pixels (52px thumb), not millions
+      const thumbData = ctx.getImageData(0, 0, thumbW, thumbH);
+      const preview = extractChannelPreview(thumbData, channelId);
+      ctx.putImageData(preview, 0, 0);
+    }
+  }, [bitmap, channelId, width, height]);
 
   return <canvas ref={canvasRef} className={styles.thumbnail} />;
 }
@@ -57,13 +68,15 @@ function EyeIcon({ visible }: { visible: boolean }) {
 }
 
 interface ChannelRowProps {
-  imageData: ImageData;
+  bitmap: ImageBitmap;
+  width: number;
+  height: number;
   channelId: ChannelId;
   active: boolean;
   onClick: () => void;
 }
 
-function ChannelRow({ imageData, channelId, active, onClick }: ChannelRowProps) {
+function ChannelRow({ bitmap, width, height, channelId, active, onClick }: ChannelRowProps) {
   return (
     <div
       className={`${styles.row} ${active ? styles.rowActive : styles.rowInactive}`}
@@ -73,7 +86,7 @@ function ChannelRow({ imageData, channelId, active, onClick }: ChannelRowProps) 
     >
       <EyeIcon visible={active} />
       <div className={styles.thumbWrap}>
-        <ChannelThumbnail imageData={imageData} channelId={channelId} />
+        <ChannelThumbnail bitmap={bitmap} channelId={channelId} width={width} height={height} />
       </div>
       <span className={styles.label}>{CHANNEL_LABELS[channelId]}</span>
     </div>
@@ -81,14 +94,18 @@ function ChannelRow({ imageData, channelId, active, onClick }: ChannelRowProps) 
 }
 
 export interface ChannelsPanelProps {
-  imageData: ImageData;
+  bitmap: ImageBitmap;
+  width: number;
+  height: number;
   colorDepth: number;
   activeChannels: ReadonlySet<ChannelId>;
   onToggle: (channelId: ChannelId) => void;
 }
 
 export const ChannelsPanel: React.FC<ChannelsPanelProps> = ({
-  imageData,
+  bitmap,
+  width,
+  height,
   colorDepth,
   activeChannels,
   onToggle,
@@ -101,7 +118,9 @@ export const ChannelsPanel: React.FC<ChannelsPanelProps> = ({
     <div className={styles.panel}>
       {hasComposite && (
         <ChannelRow
-          imageData={imageData}
+          bitmap={bitmap}
+          width={width}
+          height={height}
           channelId="composite"
           active={allActive}
           onClick={() => onToggle('composite')}
@@ -110,7 +129,9 @@ export const ChannelsPanel: React.FC<ChannelsPanelProps> = ({
       {channelIds.map((ch) => (
         <ChannelRow
           key={ch}
-          imageData={imageData}
+          bitmap={bitmap}
+          width={width}
+          height={height}
           channelId={ch}
           active={activeChannels.has(ch)}
           onClick={() => onToggle(ch)}

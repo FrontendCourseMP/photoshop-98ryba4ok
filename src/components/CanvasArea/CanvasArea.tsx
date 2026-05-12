@@ -5,7 +5,8 @@ import { rgbToLab } from '../../utils/colorConvert';
 import styles from './CanvasArea.module.css';
 
 interface CanvasAreaProps {
-  imageData?: ImageData;
+  bitmap?: ImageBitmap;
+  pixels?: ImageData;
   zoom: number;
   onZoomChange: (zoom: number) => void;
   error: string | null;
@@ -15,6 +16,8 @@ interface CanvasAreaProps {
   colorDepth?: number;
   activeTool?: ActiveTool;
   onPixelPick?: (pixel: PickedPixel) => void;
+  canvasRef?: React.RefObject<HTMLCanvasElement>;
+  redrawKey?: number;
 }
 
 export const ZOOM_STEPS = [10, 25, 33, 50, 67, 100, 150, 200, 300, 400, 600, 800, 1200, 1600, 3200];
@@ -29,7 +32,8 @@ export function snapZoom(current: number, direction: 'in' | 'out'): number {
 }
 
 export const CanvasArea: React.FC<CanvasAreaProps> = ({
-  imageData,
+  bitmap,
+  pixels,
   zoom,
   onZoomChange,
   error,
@@ -39,8 +43,11 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
   colorDepth,
   activeTool = 'pointer',
   onPixelPick,
+  canvasRef: externalCanvasRef,
+  redrawKey,
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const internalCanvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = externalCanvasRef ?? internalCanvasRef;
   const containerRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef(zoom);
   const onZoomChangeRef = useRef(onZoomChange);
@@ -53,20 +60,35 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !imageData) return;
-    const ctx = canvas.getContext('2d');
+    if (!canvas || (!bitmap && !pixels)) return;
+    // willReadFrequently keeps the canvas in CPU memory — putImageData becomes a
+    // cheap memcpy instead of a GPU texture allocation on every call.
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
-    canvas.width = imageData.width;
-    canvas.height = imageData.height;
+    const w = bitmap?.width ?? pixels!.width;
+    const h = bitmap?.height ?? pixels!.height;
 
-    let data: ImageData = imageData;
-    if (activeChannels && colorDepth !== undefined) {
-      const available = getChannelIds(colorDepth);
-      data = applyChannelMask(imageData, activeChannels, available) ?? imageData;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
     }
-    ctx.putImageData(data, 0, 0);
-  }, [imageData, activeChannels, colorDepth]);
+
+    // Check if channel mask is needed and pixels are available
+    const allActive = !activeChannels || !colorDepth ||
+      getChannelIds(colorDepth).every(ch => activeChannels.has(ch));
+
+    if (!allActive && pixels) {
+      const available = getChannelIds(colorDepth!);
+      const masked = applyChannelMask(pixels, activeChannels!, available);
+      ctx.putImageData(masked ?? pixels, 0, 0);
+    } else if (bitmap) {
+      // Fast GPU path — no pixel readback needed
+      ctx.drawImage(bitmap, 0, 0);
+    } else if (pixels) {
+      ctx.putImageData(pixels, 0, 0);
+    }
+  }, [bitmap, pixels, activeChannels, colorDepth, redrawKey]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -102,28 +124,27 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (activeTool !== 'eyedropper' || !imageData || !onPixelPick) return;
-
+    if (activeTool !== 'eyedropper' || !onPixelPick) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    const px = Math.min(Math.max(0, Math.floor((e.clientX - rect.left) * scaleX)), imageData.width - 1);
-    const py = Math.min(Math.max(0, Math.floor((e.clientY - rect.top) * scaleY)), imageData.height - 1);
+    const px = Math.min(Math.max(0, Math.floor((e.clientX - rect.left) * scaleX)), canvas.width - 1);
+    const py = Math.min(Math.max(0, Math.floor((e.clientY - rect.top) * scaleY)), canvas.height - 1);
 
-    const idx = (py * imageData.width + px) * 4;
-    const r = imageData.data[idx];
-    const g = imageData.data[idx + 1];
-    const b = imageData.data[idx + 2];
-    const a = imageData.data[idx + 3];
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+    const { data } = ctx.getImageData(px, py, 1, 1);
+    const [r, g, b, a] = data;
 
     onPixelPick({ x: px, y: py, r, g, b, a, lab: rgbToLab(r, g, b) });
   };
 
   const scale = zoom / 100;
-  const hasImage = !!imageData;
+  const hasImage = !!(bitmap || pixels);
+  const imgW = bitmap?.width ?? pixels?.width ?? 0;
+  const imgH = bitmap?.height ?? pixels?.height ?? 0;
   const isEyedropper = activeTool === 'eyedropper';
 
   return (
@@ -140,17 +161,14 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
         {hasImage ? (
           <div
             className={styles.canvasWrapper}
-            style={{
-              width: imageData!.width * scale,
-              height: imageData!.height * scale,
-            }}
+            style={{ width: imgW * scale, height: imgH * scale }}
           >
             <canvas
               ref={canvasRef}
               className={styles.canvas}
               style={{
-                width: imageData!.width * scale,
-                height: imageData!.height * scale,
+                width: imgW * scale,
+                height: imgH * scale,
                 cursor: isEyedropper ? 'crosshair' : 'default',
               }}
               onClick={handleCanvasClick}
