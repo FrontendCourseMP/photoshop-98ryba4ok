@@ -7,6 +7,7 @@ interface MenuBarProps {
   onSaveAsPNG: () => void;
   onSaveAsJPG: () => void;
   onSaveAsGB7: () => void;
+  onOpenLevels: () => void;
   isImageLoaded: boolean;
 }
 
@@ -17,6 +18,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({
   onSaveAsPNG,
   onSaveAsJPG,
   onSaveAsGB7,
+  onOpenLevels,
   isImageLoaded,
 }) => {
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
@@ -112,6 +114,15 @@ export const MenuBar: React.FC<MenuBarProps> = ({
         </button>
         {openMenu === 'image' && (
           <div className={styles.dropdown}>
+            <button
+              className={styles.dropItem}
+              onClick={() => isImageLoaded && act(onOpenLevels)}
+              disabled={!isImageLoaded}
+            >
+              Уровни…
+              <span className={styles.shortcut}>{modKey}+L</span>
+            </button>
+            <div className={styles.divider} />
             <button className={styles.dropItem} disabled>Размер изображения…</button>
             <button className={styles.dropItem} disabled>Размер холста…</button>
           </div>
