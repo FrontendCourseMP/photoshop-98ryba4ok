@@ -23,6 +23,11 @@
   color: #d0d0d0;
 }
 
+.rowActive.channelRed   { border-left: 3px solid rgba(220, 60, 60, 0.85);  background: rgba(180, 30, 30, 0.18); }
+.rowActive.channelGreen { border-left: 3px solid rgba(60, 200, 60, 0.85);  background: rgba(20, 140, 20, 0.18); }
+.rowActive.channelBlue  { border-left: 3px solid rgba(60, 110, 255, 0.85); background: rgba(30, 60, 200, 0.18); }
+.rowActive.channelAlpha { border-left: 3px solid rgba(180, 180, 180, 0.7); }
+
 .rowInactive {
   background: #1e1e1e;
   color: #555555;

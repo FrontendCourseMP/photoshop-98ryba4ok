@@ -76,10 +76,18 @@ interface ChannelRowProps {
   onClick: () => void;
 }
 
+const CHANNEL_COLOR_CLASS: Partial<Record<ChannelId, string>> = {
+  red:   styles.channelRed,
+  green: styles.channelGreen,
+  blue:  styles.channelBlue,
+  alpha: styles.channelAlpha,
+};
+
 function ChannelRow({ bitmap, width, height, channelId, active, onClick }: ChannelRowProps) {
+  const colorClass = active ? (CHANNEL_COLOR_CLASS[channelId] ?? '') : '';
   return (
     <div
-      className={`${styles.row} ${active ? styles.rowActive : styles.rowInactive}`}
+      className={`${styles.row} ${active ? styles.rowActive : styles.rowInactive} ${colorClass}`}
       onClick={onClick}
       role="button"
       aria-pressed={active}

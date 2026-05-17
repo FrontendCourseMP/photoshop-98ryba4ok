@@ -20,15 +20,15 @@ export function extractChannelPreview(imageData: ImageData, channelId: ChannelId
       d[i + 3] = data[i + 3];
       continue;
     }
-    let v: number;
-    if (channelId === 'red') v = data[i];
-    else if (channelId === 'green') v = data[i + 1];
-    else if (channelId === 'blue') v = data[i + 2];
-    else if (channelId === 'alpha') v = data[i + 3];
-    else /* gray */ v = data[i];
-    d[i] = v;
-    d[i + 1] = v;
-    d[i + 2] = v;
+    const v =
+      channelId === 'red'   ? data[i]     :
+      channelId === 'green' ? data[i + 1] :
+      channelId === 'blue'  ? data[i + 2] :
+      channelId === 'alpha' ? data[i + 3] :
+      /* gray */              data[i];
+    d[i]     = channelId === 'red'   || channelId === 'gray' || channelId === 'alpha' ? v : 0;
+    d[i + 1] = channelId === 'green' || channelId === 'gray' || channelId === 'alpha' ? v : 0;
+    d[i + 2] = channelId === 'blue'  || channelId === 'gray' || channelId === 'alpha' ? v : 0;
     d[i + 3] = 255;
   }
   return out;
