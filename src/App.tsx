@@ -11,10 +11,7 @@ import { RightPanel } from './components/RightPanel/RightPanel';
 import { StatusBar } from './components/StatusBar/StatusBar';
 import { LevelsDialog } from './components/LevelsDialog/LevelsDialog';
 import { useHotkeys } from './hooks/useHotkeys';
-import { DebugPanel } from './components/DebugPanel';
 import styles from './App.module.css';
-
-type PerfMemory = Performance & { memory?: { usedJSHeapSize: number } };
 
 function App() {
   const [image, setImage] = useState<ImageState>({
@@ -178,28 +175,16 @@ function App() {
     // Open dialog immediately — no blocking; bump key to remount with fresh state
     setLevelsKey(k => k + 1);
     setLevelsOpen(true);
-    // If pixels not yet decoded, do it in a worker (non-blocking)
     if (!image.data) {
-      console.log('[levels] decode start');
       void decodePixels(image.bitmap).then(pixels => {
-        console.log(`[levels] decode done → setImage(data)  heap=${(((performance as PerfMemory).memory?.usedJSHeapSize ?? 0) / 1024 / 1024 | 0)}MB`);
         setImage(prev => ({ ...prev, data: pixels }));
       });
-    } else {
-      console.log('[levels] pixels already decoded, using cached');
     }
   }, [image]);
 
   const handleLevelsApply = useCallback((newPixels: ImageData) => {
     setLevelsOpen(false);
-    const t0 = performance.now();
-    const h0 = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
     void createImageBitmap(newPixels).then(newBitmap => {
-      const elapsed = (performance.now() - t0).toFixed(0);
-      const h1 = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
-      console.log(`[handleLevelsApply] createImageBitmap ${elapsed}ms  heap Δ${((h1 - h0) / 1024 / 1024).toFixed(0)}MB`);
-      // Don't keep the CPU copy — set null so GC can reclaim newPixels.
-      // Next levels open will re-decode from the bitmap via the worker.
       setImage(prev => ({ ...prev, bitmap: newBitmap, data: null }));
     });
   }, []);
@@ -301,7 +286,6 @@ function App() {
         onCancel={handleLevelsCancel}
       />
 
-      {import.meta.env.DEV && <DebugPanel />}
     </div>
   );
 }

@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-
-type PerfMemory = Performance & { memory?: { usedJSHeapSize: number } };
 import { applyLevelsInWorker, computeHistogram, drawHistogram, defaultLevels } from '../utils/levels';
 import type { Channel, LevelValues } from '../utils/levels';
 import { LevelsPreviewWorker } from '../utils/levelsPreviewWorker';
@@ -28,10 +26,8 @@ export function useLevels(
 
     // Defer histogram to idle time so it doesn't block the frame where the dialog opens
     const run = () => {
-      const t0 = performance.now();
       const histogram = computeHistogram(imageData, channel);
       drawHistogram(canvas, histogram, logScale);
-      console.log(`[histogram] ${(performance.now() - t0).toFixed(0)}ms  channel=${channel}`);
     };
 
     if ('requestIdleCallback' in window) {
@@ -89,10 +85,7 @@ export function useLevels(
     const worker = previewWorkerRef.current;
     if (!worker) return;
 
-    const t0 = performance.now();
     void worker.compute(levels).then(result => {
-      const ms = (performance.now() - t0).toFixed(1);
-      if (Number(ms) > 20) console.log(`[preview] worker ${ms}ms`);
       return createImageBitmap(result);
     }).then(bmp => {
       const ctx = canvas.getContext('2d');
@@ -126,14 +119,8 @@ export function useLevels(
   const handleApply = () => {
     if (!imageData || isApplying) return;
     setIsApplying(true);
-    const t0 = performance.now();
-    const heapBefore = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
-    console.log(`[applyLevels] start  heap=${(heapBefore / 1024 / 1024).toFixed(0)}MB`);
     applyLevelsInWorker(imageData, levels).then(
       result => {
-        const elapsed = (performance.now() - t0).toFixed(0);
-        const heapAfter = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
-        console.log(`[applyLevels] worker done ${elapsed}ms  heap Δ${((heapAfter - heapBefore) / 1024 / 1024).toFixed(0)}MB`);
         onApply(result);
       },
       (err) => {

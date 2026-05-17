@@ -1,12 +1,7 @@
-type PerfMemory = Performance & { memory?: { usedJSHeapSize: number } };
-
 // Decodes ImageBitmap → ImageData in a Web Worker via OffscreenCanvas.
 // Avoids blocking the main thread with synchronous GPU→CPU readback.
 export function decodePixels(bitmap: ImageBitmap): Promise<ImageData> {
   return new Promise((resolve, reject) => {
-    const t0 = performance.now();
-    const heapBefore = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
-
     const code = `
       self.onmessage = ({ data: { bitmap } }) => {
         try {
@@ -28,14 +23,9 @@ export function decodePixels(bitmap: ImageBitmap): Promise<ImageData> {
     worker.onmessage = ({ data }) => {
       URL.revokeObjectURL(url);
       worker.terminate();
-      const elapsed = (performance.now() - t0).toFixed(0);
-      const heapAfter = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
-      const heapDelta = ((heapAfter - heapBefore) / 1024 / 1024).toFixed(0);
       if (data.ok) {
-        console.log(`[decodePixels] ${elapsed}ms  heap Δ${heapDelta}MB  (${data.w}×${data.h})`);
         resolve(new ImageData(new Uint8ClampedArray(data.buffer), data.w, data.h));
       } else {
-        console.error(`[decodePixels] failed after ${elapsed}ms:`, data.error);
         reject(new Error(data.error));
       }
     };
@@ -43,17 +33,12 @@ export function decodePixels(bitmap: ImageBitmap): Promise<ImageData> {
     worker.onerror = (err) => {
       URL.revokeObjectURL(url);
       worker.terminate();
-      const elapsed = (performance.now() - t0).toFixed(0);
-      console.error(`[decodePixels] worker error after ${elapsed}ms:`, err);
       reject(new Error(String(err)));
     };
 
     // Clone bitmap before transferring — main thread keeps original for rendering
     createImageBitmap(bitmap).then(
-      copy => {
-        console.log(`[decodePixels] bitmap clone ready (${bitmap.width}×${bitmap.height}), dispatching to worker…`);
-        worker.postMessage({ bitmap: copy }, [copy]);
-      },
+      copy => worker.postMessage({ bitmap: copy }, [copy]),
       err => { URL.revokeObjectURL(url); worker.terminate(); reject(err); },
     );
   });
