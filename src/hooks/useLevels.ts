@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+
+type PerfMemory = Performance & { memory?: { usedJSHeapSize: number } };
 import { applyLevelsInWorker, computeHistogram, drawHistogram, defaultLevels } from '../utils/levels';
 import type { Channel, LevelValues } from '../utils/levels';
 import { LevelsPreviewWorker } from '../utils/levelsPreviewWorker';
@@ -6,7 +8,7 @@ import { LevelsPreviewWorker } from '../utils/levelsPreviewWorker';
 export function useLevels(
   isOpen: boolean,
   imageData: ImageData | null,
-  canvasRef: React.RefObject<HTMLCanvasElement>,
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
   onApply: (imageData: ImageData) => void,
 ) {
   const [selectedChannel, setSelectedChannel] = useState<Channel>('master');
@@ -17,15 +19,6 @@ export function useLevels(
   const histogramCanvasRef = useRef<HTMLCanvasElement>(null);
   const previewWorkerRef = useRef<LevelsPreviewWorker | null>(null);
   const previewBitmapRef = useRef<ImageBitmap | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setSelectedChannel('master');
-    setLevels(defaultLevels);
-    setIsLogScale(false);
-    setPreviewEnabled(true);
-    setIsApplying(false);
-  }, [isOpen, imageData]);
 
   useEffect(() => {
     if (!isOpen || !imageData || !histogramCanvasRef.current) return;
@@ -113,7 +106,7 @@ export function useLevels(
   const updateLevel = (key: keyof LevelValues, value: number) => {
     setLevels((prev) => {
       if (selectedChannel === 'master') {
-        const updated = { black: 0, white: 255, gamma: 1, ...prev.master, [key]: value };
+        const updated = { ...prev.master, [key]: value };
         return { ...prev, master: updated, r: updated, g: updated, b: updated };
       }
       return { ...prev, [selectedChannel]: { ...prev[selectedChannel], [key]: value } };
@@ -134,12 +127,12 @@ export function useLevels(
     if (!imageData || isApplying) return;
     setIsApplying(true);
     const t0 = performance.now();
-    const heapBefore = (performance as any).memory?.usedJSHeapSize ?? 0;
+    const heapBefore = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
     console.log(`[applyLevels] start  heap=${(heapBefore / 1024 / 1024).toFixed(0)}MB`);
     applyLevelsInWorker(imageData, levels).then(
       result => {
         const elapsed = (performance.now() - t0).toFixed(0);
-        const heapAfter = (performance as any).memory?.usedJSHeapSize ?? 0;
+        const heapAfter = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
         console.log(`[applyLevels] worker done ${elapsed}ms  heap Δ${((heapAfter - heapBefore) / 1024 / 1024).toFixed(0)}MB`);
         onApply(result);
       },

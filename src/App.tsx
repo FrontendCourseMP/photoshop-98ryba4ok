@@ -5,13 +5,16 @@ import { getChannelIds } from './utils/colorChannels';
 import { decodePixels } from './utils/imageWorker';
 import { MenuBar } from './components/MenuBar/MenuBar';
 import { Toolbar } from './components/Toolbar/Toolbar';
-import { CanvasArea, snapZoom } from './components/CanvasArea/CanvasArea';
+import { CanvasArea } from './components/CanvasArea/CanvasArea';
+import { snapZoom } from './components/CanvasArea/zoom';
 import { RightPanel } from './components/RightPanel/RightPanel';
 import { StatusBar } from './components/StatusBar/StatusBar';
 import { LevelsDialog } from './components/LevelsDialog/LevelsDialog';
 import { useHotkeys } from './hooks/useHotkeys';
 import { DebugPanel } from './components/DebugPanel';
 import styles from './App.module.css';
+
+type PerfMemory = Performance & { memory?: { usedJSHeapSize: number } };
 
 function App() {
   const [image, setImage] = useState<ImageState>({
@@ -29,16 +32,10 @@ function App() {
   const [activeTool, setActiveTool] = useState<ActiveTool>('pointer');
   const [pickedPixel, setPickedPixel] = useState<PickedPixel | null>(null);
   const [levelsOpen, setLevelsOpen] = useState(false);
+  const [levelsKey, setLevelsKey] = useState(0);
   const [canvasRedrawKey, setCanvasRedrawKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (image.colorDepth !== null) {
-      setActiveChannels(new Set(getChannelIds(image.colorDepth)));
-    }
-    setPickedPixel(null);
-  }, [image.bitmap]);
 
   // Close old ImageBitmap when replaced — GPU memory is NOT freed by GC alone
   useEffect(() => {
@@ -86,12 +83,11 @@ function App() {
   const processFile = async (file: File) => {
     setError(null);
     const ext = file.name.split('.').pop()?.toLowerCase();
-    let format: ImageState['format'] = null;
-
-    if (ext === 'png') format = 'png';
-    else if (ext === 'jpg' || ext === 'jpeg') format = 'jpg';
-    else if (ext === 'gb7') format = 'gb7';
-    else {
+    const format = ext === 'png' ? 'png' as const
+      : ext === 'jpg' || ext === 'jpeg' ? 'jpg' as const
+      : ext === 'gb7' ? 'gb7' as const
+      : null;
+    if (!format) {
       setError('Неподдерживаемый формат. Используйте PNG, JPG или GB7.');
       return;
     }
@@ -102,6 +98,8 @@ function App() {
         const { imageData, colorDepth } = decodeGB7(buffer);
         const bitmap = await createImageBitmap(imageData);
         setImage({ bitmap, data: imageData, width: imageData.width, height: imageData.height, colorDepth, fileName: file.name, format: 'gb7' });
+        setActiveChannels(new Set(getChannelIds(colorDepth)));
+        setPickedPixel(null);
         setZoom(100);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ошибка декодирования GB7');
@@ -112,15 +110,18 @@ function App() {
     try {
       // createImageBitmap decodes async without blocking main thread
       const bitmap = await createImageBitmap(file);
+      const colorDepth = format === 'jpg' ? 24 : 32;
       setImage({
         bitmap,
         data: null, // pixels decoded lazily on demand
         width: bitmap.width,
         height: bitmap.height,
-        colorDepth: format === 'jpg' ? 24 : 32,
+        colorDepth,
         fileName: file.name,
         format,
       });
+      setActiveChannels(new Set(getChannelIds(colorDepth)));
+      setPickedPixel(null);
       setZoom(100);
       setError(null);
     } catch {
@@ -174,13 +175,14 @@ function App() {
 
   const handleOpenLevels = useCallback(() => {
     if (!image.bitmap) return;
-    // Open dialog immediately — no blocking
+    // Open dialog immediately — no blocking; bump key to remount with fresh state
+    setLevelsKey(k => k + 1);
     setLevelsOpen(true);
     // If pixels not yet decoded, do it in a worker (non-blocking)
     if (!image.data) {
       console.log('[levels] decode start');
       void decodePixels(image.bitmap).then(pixels => {
-        console.log(`[levels] decode done → setImage(data)  heap=${((performance as any).memory?.usedJSHeapSize / 1024 / 1024 | 0)}MB`);
+        console.log(`[levels] decode done → setImage(data)  heap=${(((performance as PerfMemory).memory?.usedJSHeapSize ?? 0) / 1024 / 1024 | 0)}MB`);
         setImage(prev => ({ ...prev, data: pixels }));
       });
     } else {
@@ -191,10 +193,10 @@ function App() {
   const handleLevelsApply = useCallback((newPixels: ImageData) => {
     setLevelsOpen(false);
     const t0 = performance.now();
-    const h0 = (performance as any).memory?.usedJSHeapSize ?? 0;
+    const h0 = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
     void createImageBitmap(newPixels).then(newBitmap => {
       const elapsed = (performance.now() - t0).toFixed(0);
-      const h1 = (performance as any).memory?.usedJSHeapSize ?? 0;
+      const h1 = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
       console.log(`[handleLevelsApply] createImageBitmap ${elapsed}ms  heap Δ${((h1 - h0) / 1024 / 1024).toFixed(0)}MB`);
       // Don't keep the CPU copy — set null so GC can reclaim newPixels.
       // Next levels open will re-decode from the bitmap via the worker.
@@ -291,6 +293,7 @@ function App() {
       />
 
       <LevelsDialog
+        key={levelsKey}
         isOpen={levelsOpen}
         imageData={image.data}
         canvasRef={mainCanvasRef}

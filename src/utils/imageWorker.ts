@@ -1,9 +1,11 @@
+type PerfMemory = Performance & { memory?: { usedJSHeapSize: number } };
+
 // Decodes ImageBitmap → ImageData in a Web Worker via OffscreenCanvas.
 // Avoids blocking the main thread with synchronous GPU→CPU readback.
 export function decodePixels(bitmap: ImageBitmap): Promise<ImageData> {
   return new Promise((resolve, reject) => {
     const t0 = performance.now();
-    const heapBefore = (performance as any).memory?.usedJSHeapSize ?? 0;
+    const heapBefore = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
 
     const code = `
       self.onmessage = ({ data: { bitmap } }) => {
@@ -27,7 +29,7 @@ export function decodePixels(bitmap: ImageBitmap): Promise<ImageData> {
       URL.revokeObjectURL(url);
       worker.terminate();
       const elapsed = (performance.now() - t0).toFixed(0);
-      const heapAfter = (performance as any).memory?.usedJSHeapSize ?? 0;
+      const heapAfter = (performance as PerfMemory).memory?.usedJSHeapSize ?? 0;
       const heapDelta = ((heapAfter - heapBefore) / 1024 / 1024).toFixed(0);
       if (data.ok) {
         console.log(`[decodePixels] ${elapsed}ms  heap Δ${heapDelta}MB  (${data.w}×${data.h})`);

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useLevels } from '../../hooks/useLevels';
 import type { Channel } from '../../utils/levels';
 import styles from './LevelsDialog.module.css';
@@ -6,7 +6,7 @@ import styles from './LevelsDialog.module.css';
 interface LevelsDialogProps {
   isOpen: boolean;
   imageData: ImageData | null;
-  canvasRef: React.RefObject<HTMLCanvasElement>;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
   onApply: (imageData: ImageData) => void;
   onCancel: () => void;
 }
@@ -41,21 +41,13 @@ export const LevelsDialog: React.FC<LevelsDialogProps> = ({
     handleApply,
   } = useLevels(isOpen, imageData, canvasRef, onApply);
 
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [pos, setPos] = useState(() => ({
+    x: Math.round(window.innerWidth / 2 - 190),
+    y: Math.round(window.innerHeight / 2 - 200),
+  }));
   const dragStart = useRef<{ mouseX: number; mouseY: number; posX: number; posY: number } | null>(null);
 
-  // Center on first open
-  useEffect(() => {
-    if (isOpen) {
-      setPos({
-        x: Math.round(window.innerWidth / 2 - 190),
-        y: Math.round(window.innerHeight / 2 - 200),
-      });
-    }
-  }, [isOpen]);
-
   const handleTitleMouseDown = (e: React.MouseEvent) => {
-    if (!pos) return;
     e.preventDefault();
     dragStart.current = { mouseX: e.clientX, mouseY: e.clientY, posX: pos.x, posY: pos.y };
 
@@ -75,7 +67,7 @@ export const LevelsDialog: React.FC<LevelsDialogProps> = ({
     window.addEventListener('mouseup', onUp);
   };
 
-  if (!isOpen || !pos) return null;
+  if (!isOpen) return null;
 
   const isLoading = !imageData;
   const isBusy = isLoading || isApplying;

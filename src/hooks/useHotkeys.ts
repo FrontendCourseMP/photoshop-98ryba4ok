@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { isMac } from '../utils/platform';
 
 type HotkeyMap = Record<string, () => void>;
 
 export function useHotkeys(map: HotkeyMap) {
   const ref = useRef(map);
-  ref.current = map;
+  useLayoutEffect(() => { ref.current = map; });
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
